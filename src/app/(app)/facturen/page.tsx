@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { createClient } from "@/lib/supabase/server";
+import { syncOverdueInvoices } from "@/lib/actions/invoices";
 import { formatCurrency, formatDate, STATUS_LABELS, STATUS_STYLES } from "@/lib/format";
 import type { Customer, Invoice } from "@/lib/types";
 
@@ -18,6 +19,7 @@ export default async function FacturenPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   const { status } = await searchParams;
+  await syncOverdueInvoices();
   const supabase = await createClient();
 
   let query = supabase

@@ -139,6 +139,13 @@ export function SettingsForm({ settings }: { settings: CompanySettings }) {
       <Field label="E-mailadres" name="email" defaultValue={settings.email} type="email" />
       <Field label="Telefoonnummer" name="phone" defaultValue={settings.phone} type="tel" />
       <Field label="Factuurprefix" name="invoice_prefix" defaultValue={settings.invoice_prefix} />
+      <Field
+        label="Betalingstermijn (dagen)"
+        name="payment_term_days"
+        defaultValue={String(settings.payment_term_days)}
+        type="number"
+        required
+      />
       <p className="-mt-2 text-xs text-gray-400">
         Volgende factuurnummer: {settings.invoice_prefix}
         {String(settings.next_invoice_number).padStart(4, "0")} (wordt automatisch beheerd)

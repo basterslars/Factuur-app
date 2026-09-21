@@ -201,3 +201,16 @@ export async function markInvoiceOverdue(invoiceId: string) {
   const supabase = await createClient();
   await supabase.from("invoices").update({ status: "te_laat" }).eq("id", invoiceId).eq("status", "verstuurd");
 }
+
+// Er draait geen achtergrondtaak in deze MVP; in plaats daarvan wordt de
+// status hier "lui" bijgewerkt telkens als het dashboard of het
+// facturenoverzicht geladen wordt.
+export async function syncOverdueInvoices() {
+  const supabase = await createClient();
+  const today = new Date().toISOString().slice(0, 10);
+  await supabase
+    .from("invoices")
+    .update({ status: "te_laat" })
+    .eq("status", "verstuurd")
+    .lt("due_date", today);
+}

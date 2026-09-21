@@ -14,12 +14,16 @@ export async function updateCompanySettings(
   const businessName = String(formData.get("business_name") ?? "").trim();
   const kvkNumber = String(formData.get("kvk_number") ?? "").trim();
   const vatNumber = String(formData.get("vat_number") ?? "").trim();
+  const paymentTermDays = Number(formData.get("payment_term_days"));
 
   if (!businessName || !kvkNumber || !vatNumber) {
     return {
       error: "Bedrijfsnaam, KVK-nummer en btw-nummer zijn verplicht voor een geldige factuur.",
       success: false,
     };
+  }
+  if (!Number.isFinite(paymentTermDays) || paymentTermDays < 0) {
+    return { error: "Vul een geldige betalingstermijn in.", success: false };
   }
 
   const supabase = await createClient();
@@ -36,6 +40,7 @@ export async function updateCompanySettings(
       email: String(formData.get("email") ?? "").trim(),
       phone: String(formData.get("phone") ?? "").trim(),
       invoice_prefix: String(formData.get("invoice_prefix") ?? "").trim(),
+      payment_term_days: paymentTermDays,
       logo_url: String(formData.get("logo_url") ?? "") || null,
     })
     .eq("id", SETTINGS_ID);

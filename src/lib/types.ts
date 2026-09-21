@@ -17,6 +17,7 @@ export type CompanySettings = {
   invoice_prefix: string;
   next_invoice_number: number;
   default_vat_rate: number;
+  payment_term_days: number;
   created_at: string;
   updated_at: string;
 };
@@ -88,6 +89,7 @@ export type Invoice = {
   customer_id: string;
   invoice_date: string;
   delivery_date: string | null;
+  due_date: string | null;
   status: InvoiceStatus;
   subtotal: number;
   vat_breakdown: { rate: number; base: number; vat: number }[];
