@@ -171,6 +171,19 @@ export async function updateInvoiceDraft(
   return { id: invoiceId };
 }
 
+export async function finalizeInvoice(invoiceId: string): Promise<InvoiceActionResult> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("finalize_invoice", {
+    p_invoice_id: invoiceId,
+  });
+
+  if (error || !data) {
+    return { error: `Finaliseren mislukt: ${error?.message ?? "onbekende fout"}` };
+  }
+
+  return { id: invoiceId };
+}
+
 export async function deleteConceptInvoice(invoiceId: string) {
   const supabase = await createClient();
   await supabase.from("invoices").delete().eq("id", invoiceId).eq("status", "concept");
