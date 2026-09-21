@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
+import { SendEmailButton } from "@/components/send-email-button";
 import { createClient } from "@/lib/supabase/server";
 import { deleteConceptInvoice, markInvoicePaid } from "@/lib/actions/invoices";
 import { formatCurrency, formatDate, STATUS_LABELS, STATUS_STYLES, UNIT_LABELS } from "@/lib/format";
@@ -29,6 +31,7 @@ export default async function FactuurDetailPage({
 
   if (!invoice) notFound();
 
+  const customerEmail = invoice.customer_snapshot?.email ?? invoice.customer?.email ?? null;
   const deleteAction = deleteConceptInvoice.bind(null, id);
   const markPaidAction = async () => {
     "use server";
@@ -99,6 +102,10 @@ export default async function FactuurDetailPage({
         )}
 
         <div className="flex flex-col gap-2">
+          <Suspense>
+            <SendEmailButton invoiceId={id} hasCustomerEmail={Boolean(customerEmail)} />
+          </Suspense>
+
           <a
             href={`/api/invoices/${id}/pdf`}
             className="w-full rounded-xl border border-gray-300 px-4 py-3 text-center text-base font-semibold text-gray-700"
