@@ -1,36 +1,105 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Factuur-app
 
-## Getting Started
+Snel een wettelijk geldige factuur opstellen en versturen vanaf je telefoon,
+op locatie. Gebouwd voor zzp'ers en kleine bedrijven in de schilder-/
+stukadoorsbranche: één bedrijf per installatie (single-tenant), mobiel-eerst,
+zo min mogelijk stappen tussen "klaar met de klus" en "factuur verstuurd".
 
-First, run the development server:
+## Kernfunctionaliteit
+
+- **Snelle factuur-flow**: klant kiezen via autocomplete (of meteen een
+  nieuwe naam intypen), regels toevoegen via opgeslagen sjablonen of
+  handmatig, live btw-berekening, opslaan als concept of direct versturen.
+- **Wettelijk geldige facturen**: opeenvolgend factuurnummer zonder gaten
+  (automatisch beheerd, niet handmatig aanpasbaar), volledige bedrijfs- en
+  klantgegevens, KVK/btw-nummer, factuur- en leverdatum, btw-bedrag én
+  -percentage apart vermeld, totaal excl./incl. btw.
+- **PDF + e-mail**: professionele PDF (met logo), direct versturen per
+  e-mail (Resend) of downloaden als alternatief.
+- **Overzicht**: dashboard met openstaand bedrag en omzet deze maand,
+  facturenlijst met status (concept/verstuurd/betaald/te laat).
+- **Klantenbeheer**: CRUD + factuurgeschiedenis per klant.
+- **Offline-tolerant**: elke wijziging aan een concept wordt gedebounced
+  naar `localStorage` geschreven. Valt het internet weg tijdens het
+  opslaan, dan blijft het concept lokaal bewaard totdat het alsnog lukt.
+- **Data-eigendom**: klanten, facturen en factuurregels zijn te exporteren
+  als CSV, plus een zip met alle factuur-PDF's (`/export`).
+
+## Techniek
+
+- **Next.js 16** (App Router, TypeScript, Tailwind CSS)
+- **Supabase**: Postgres-database, Auth en Storage (logo-upload)
+- **@react-pdf/renderer** voor serverside PDF-generatie
+- **Resend** voor het versturen van facturen per e-mail
+
+### Architectuurkeuzes die de moeite waard zijn om te kennen
+
+- **Factuurnummering**: een concept krijgt pas een nummer op het moment dat
+  hij daadwerkelijk wordt uitgereikt (verstuurd per e-mail óf gedownload).
+  Dat gebeurt atomisch in de Postgres-functie `finalize_invoice()`, zodat
+  een verlaten concept nooit een gat in de reeks veroorzaakt. Diezelfde
+  functie bevriest de bedrijfs- en klantgegevens op dat moment in een
+  snapshot (`issuer_snapshot`/`customer_snapshot`), zodat een latere
+  adreswijziging een al verstuurde factuur niet met terugwerkende kracht
+  verandert.
+- **Single-tenant, wel met login**: er is maar plek voor één bedrijf
+  (`company_settings` is een singleton-rij), maar de app zit toch achter
+  een account (`/setup` eenmalig, daarna `/login`) omdat er anders
+  bedrijfs- en klantgegevens voor iedereen met de URL zichtbaar zouden zijn.
+- **"Te laat"** wordt niet door een achtergrondtaak bijgehouden, maar lui
+  bijgewerkt (verstuurd + vervaldatum verstreken) telkens als het dashboard
+  of het facturenoverzicht geladen wordt.
+
+## Lokaal draaien
 
 ```bash
+npm install
+cp .env.example .env.local   # vul in, zie hieronder
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Environment-variabelen
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variabele | Waar te vinden |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase-project → Settings → API |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase-project → Settings → API (publishable/anon key) |
+| `RESEND_API_KEY` | [resend.com](https://resend.com) → API Keys |
+| `RESEND_FROM_EMAIL` | Een adres op een bij Resend geverifieerd domein |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Zonder `RESEND_API_KEY`/`RESEND_FROM_EMAIL` werkt alles behalve het
+daadwerkelijk versturen van e-mail: de factuur wordt dan gewoon
+gefinaliseerd (krijgt een nummer) en je krijgt een duidelijke melding dat je
+de PDF handmatig moet versturen.
 
-## Learn More
+### Database-schema
 
-To learn more about Next.js, take a look at the following resources:
+De migraties staan in `supabase/migrations/` en zijn al toegepast op het
+gekoppelde Supabase-project. Voor een nieuw project: draai ze in volgorde
+via de Supabase SQL-editor, of met de Supabase CLI:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+supabase link --project-ref <jouw-project-ref>
+supabase db push
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Eerste account aanmaken
 
-## Deploy on Vercel
+Ga naar `/setup` — dit werkt precies één keer (daarna sluit de pagina
+zichzelf af, want de app is single-tenant). Supabase stuurt een
+bevestigingsmail; klik daarna in en log in op `/login`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deployen (Vercel)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Importeer de repo in Vercel.
+2. Zet dezelfde environment-variabelen als hierboven.
+3. Deploy. Er is geen build-configuratie nodig buiten wat hier al staat.
+
+## Bekend en bewust (nog) niet gebouwd
+
+- Alleen 21% btw in de UI (het datamodel ondersteunt per regel een ander
+  percentage, mocht btw-verlegd/9%/KOR later nodig zijn).
+- Geen koppeling met boekhoudsoftware (Moneybird, e-Boekhouden) — de
+  CSV/PDF-export is de ontsnappingsroute daarvoor.
+- Geen automatische betalingsherinneringen.
+- Single-tenant: één bedrijf per installatie, geen multi-user rollen.
